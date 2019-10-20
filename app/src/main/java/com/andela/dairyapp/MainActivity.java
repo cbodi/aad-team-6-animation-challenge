@@ -1,9 +1,12 @@
 package com.andela.dairyapp;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -51,41 +54,34 @@ public class MainActivity extends AppCompatActivity {
 
   private void launchInitialAnimation() {
 
-//    ObjectAnimator logoFadeInAnimator = ObjectAnimator.ofFloat(mAppLogo, "alpha", 0.0f, 1.0f);
-//    logoFadeInAnimator.setDuration(ANIM_DURATION)
-//            .setInterpolator(new AccelerateDecelerateInterpolator());
-//
-//    // This anim is used for moving the logo downwards
-//    ObjectAnimator logoDownwardMovementAnimator = ObjectAnimator.ofFloat(mAppLogo, "translationY", 0f, 200f);
-//    logoDownwardMovementAnimator.setDuration(ANIM_DURATION)
-//            .setInterpolator(new AccelerateDecelerateInterpolator());
-//
-//
-//    ObjectAnimator textFadeInAnimator = ObjectAnimator.ofFloat(mWelcomeText, "alpha", 0.0f, 1.0f);
-//    textFadeInAnimator.setDuration(ANIM_DURATION);
-//
-//    AnimatorSet set = new AnimatorSet();
-//    set.playTogether(logoFadeInAnimator, logoDownwardMovementAnimator);
-//    set.start();
-//    textFadeInAnimator.start();
+    ObjectAnimator logoFadeInAnimator = ObjectAnimator.ofFloat(mAppLogo, "alpha", 0.0f, 1.0f);
+    logoFadeInAnimator.setDuration(ANIM_DURATION)
+            .setInterpolator(new AccelerateDecelerateInterpolator());
+
+    // This anim is used for moving the logo downwards
+    ObjectAnimator logoDownwardMovementAnimator = ObjectAnimator.ofFloat(mAppLogo, "translationY", 0f, 200f);
+    logoDownwardMovementAnimator.setDuration(ANIM_DURATION)
+            .setInterpolator(new AccelerateDecelerateInterpolator());
+
+
+    ObjectAnimator textFadeInAnimator = ObjectAnimator.ofFloat(mWelcomeText, "alpha", 0.0f, 1.0f);
+    textFadeInAnimator.setDuration(ANIM_DURATION);
+
+ ObjectAnimator textDownwardMovementAnimator = ObjectAnimator.ofFloat(mWelcomeText, "translationY", 0f, 200f);
+    textDownwardMovementAnimator.setDuration(ANIM_DURATION);
+
+    AnimatorSet set = new AnimatorSet();
+    set.playTogether(logoFadeInAnimator, logoDownwardMovementAnimator, textFadeInAnimator, textDownwardMovementAnimator);
+  /*  AnimatorSet sett = new AnimatorSet();
+    sett.playTogether(textFadeInAnimator, textDownwardMovementAnimator);*/
+    set.start();
+//    sett.start();
+    //textFadeInAnimator.start();
 
     //The code below represents an alternative way of animating the logo and welcome message. It should be used in case above fails.
 
-    mAppLogo.setAlpha(0f);
     mAppLogo.setVisibility(View.VISIBLE);
-    mAppLogo.animate()
-            .alpha(1f)
-            .setDuration(ANIM_DURATION)
-            .setListener(null)
-            .start();
-
-    mWelcomeText.setAlpha(0f);
     mWelcomeText.setVisibility(View.VISIBLE);
-    mWelcomeText.animate()
-            .alpha(1f)
-            .setDuration(ANIM_DURATION)
-            .setListener(null)
-            .start();
 
 
   }
