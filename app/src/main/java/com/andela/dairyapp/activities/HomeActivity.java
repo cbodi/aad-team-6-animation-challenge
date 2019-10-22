@@ -278,18 +278,17 @@ public class HomeActivity extends AppCompatActivity {
                             eventDesc.setError(getResources().getString(R.string.required_field));
                             field_shake.setTarget(eventDesc);
                             field_shake.start();
-                        } else {
                             //TODO, save the information in a database or file :-)
                             Note note = new Note();
                             note.setNote_name(event_name);
                             note.setNote_description(event_desc);
-                            Random random = new Random();
-                            int color = Color.argb(255, random.nextInt(256), random.nextInt(256), random.nextInt(256));
-                            note.setColor_code(color);
-                            Date date = new Date();
-                            DateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
-                            String date_created = dateFormat.format(date);
-                            note.setCreated_at(date_created);
+                            note.setColor_code(generateColor());
+                            note.setCreated_at(createAt());
+
+                            NoteRepositoryImpl noteRepository =
+                                    ((DairyApplication) saveBtn.getContext().getApplicationContext()).getNoteRepository();
+                            long rowId = noteRepository.insert(note);
+                            note.set_id(Integer.parseInt(String.valueOf(rowId)));
                             boolean success = notesAdapter.addNote(note);
                             if (success) {
                                 dialog.dismiss();

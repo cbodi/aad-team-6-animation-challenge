@@ -64,16 +64,15 @@ public class AuthActivity extends AppCompatActivity {
                 new AuthUI.IdpConfig.GoogleBuilder().build());
 
 
-
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                      FirebaseUser user = firebaseAuth.getCurrentUser();
-                      if (user != null){
-                          navigateHome(user);
-                      } else {
-                          navigateHome(null);
-                      }
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    navigateHome(user);
+                } else {
+                    navigateHome(null);
+                }
             }
         };
     }
@@ -102,12 +101,23 @@ public class AuthActivity extends AppCompatActivity {
             Intent homeIntent = new Intent(this, HomeActivity.class);
             startActivity(homeIntent);
             finish();
-        }else {
+        } else {
             startActivityForResult(AuthUI.getInstance().createSignInIntentBuilder()
                             .setAvailableProviders(providers)
                             .setIsSmartLockEnabled(false)// Stop the default google-account-chooser pop
                             .build()
                     , RC_SIGN_IN);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+
+        if (resultCode != RC_SIGN_IN) {
+            finish();
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+
         }
     }
 
