@@ -313,7 +313,10 @@ public class HomeActivity extends AppCompatActivity {
                 Snackbar.make(notesRecyclerView, "Sorting by Z - A...", Snackbar.LENGTH_LONG).show();
                 break;
             case R.id.action_about:
-                Snackbar.make(notesRecyclerView, "About", Snackbar.LENGTH_LONG).show();
+                Snackbar.make(notesRecyclerView, "About", Snackbar.LENGTH_SHORT).show();
+                Intent intent
+                         = new Intent(this, AboutActivity.class);
+                startActivity(intent);
                 break;
             case R.id.logout:
                 logout();
