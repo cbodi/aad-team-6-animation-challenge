@@ -112,7 +112,7 @@ public class NotesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             while (cursor.moveToNext()) {
                 id = cursor.getInt(idPos);
                 name = cursor.getString(namePos);
-                description = cursor.getString(namePos);
+                description = cursor.getString(desPos);
                 color = cursor.getInt(colorPos);
                 createAt = cursor.getString(createPos);
 

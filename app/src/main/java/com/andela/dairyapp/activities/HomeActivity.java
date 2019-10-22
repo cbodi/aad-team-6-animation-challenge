@@ -1,41 +1,46 @@
 package com.andela.dairyapp.activities;
 
+import android.animation.Animator;
+import android.animation.AnimatorInflater;
+import android.animation.AnimatorSet;
 import android.app.Dialog;
-import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import com.andela.dairyapp.DairyApplication;
-import com.andela.dairyapp.adapters.NotesAdapter;
-import com.andela.dairyapp.database.DairyDatabaseContract;
-import com.andela.dairyapp.database.repositories.NoteRepositoryImpl;
-import com.andela.dairyapp.models.Note;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.text.TextUtils;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.animation.OvershootInterpolator;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.TextView;
-import android.widget.Toast;
-
+import com.andela.dairyapp.DairyApplication;
 import com.andela.dairyapp.R;
+import com.andela.dairyapp.activities.auth.AuthActivity;
+import com.andela.dairyapp.adapters.NotesAdapter;
+import com.andela.dairyapp.database.repositories.NoteRepositoryImpl;
+import com.andela.dairyapp.models.Note;
+import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -46,46 +51,59 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
 
-import jp.wasabeef.recyclerview.adapters.AlphaInAnimationAdapter;
-import jp.wasabeef.recyclerview.adapters.ScaleInAnimationAdapter;
-import jp.wasabeef.recyclerview.adapters.SlideInRightAnimationAdapter;
-import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
-
 public class HomeActivity extends AppCompatActivity {
     FloatingActionButton fab;
     NotesAdapter notesAdapter;
     List<Note> noteList = new ArrayList<>();
     RecyclerView notesRecyclerView;
     TextView emptyTV;
+    boolean doubleBackToExitPressedOnce = false;
+    boolean pendingIntroAnimation ;
 
+
+    private FirebaseAuth mFirebaseAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
+    private String mUsername;
+    private FirebaseUser mUserFirebase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setNavigationIcon(R.mipmap.ic_round_logo);
         setSupportActionBar(toolbar);
 
 
+        mFirebaseAuth = FirebaseAuth.getInstance();
+        mUserFirebase = mFirebaseAuth.getCurrentUser();
+
+        /*if (mUserFirebase == null) {
+            startActivity(new Intent(this, AuthActivity.class));
+            finish();
+        } else {
+            mUsername = mUserFirebase.getDisplayName();
+        }*/
 
         notesAdapter = new NotesAdapter(noteList);
         notesRecyclerView = findViewById(R.id.notesRecyclerView);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         notesRecyclerView.setHasFixedSize(true);
         notesRecyclerView.setLayoutManager(linearLayoutManager);
-        SlideInLeftAnimator animator = new SlideInLeftAnimator();
-        animator.setInterpolator(new OvershootInterpolator());
-        animator.setAddDuration(1000);
-        notesRecyclerView.setItemAnimator(animator);
-        ScaleInAnimationAdapter myAdapter = new ScaleInAnimationAdapter(notesAdapter);
-        myAdapter.setDuration(400);
-        myAdapter.setFirstOnly(false);
-        myAdapter.setInterpolator(new OvershootInterpolator());
-        notesRecyclerView.setAdapter(new AlphaInAnimationAdapter(myAdapter));
+        if (savedInstanceState == null) {
+            pendingIntroAnimation = true;
+        }
+        notesRecyclerView.setAdapter(notesAdapter);
+
         loadNotes();
         emptyTV = findViewById(R.id.empty_dairy);
 
         fab = findViewById(R.id.fab_action_btn);
+
+        AnimatorSet alphaAnimation =(AnimatorSet) AnimatorInflater.loadAnimator(this,R.animator.fab_add_note_anim);
+        alphaAnimation.setTarget(fab);
+        alphaAnimation.start();
+
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View view) {
@@ -101,6 +119,7 @@ public class HomeActivity extends AppCompatActivity {
                 final EditText eventDesc = layoutView.findViewById(R.id.diary_description);
                 final Button cancelBtn = layoutView.findViewById(R.id.action_cancel);
                 final Button saveBtn = layoutView.findViewById(R.id.action_save);
+
 
                 final Dialog dialog = dialogBuilder.create();
                 //make sure the dialog is opaque
@@ -122,10 +141,23 @@ public class HomeActivity extends AppCompatActivity {
                         String event_desc = eventDesc.getText().toString();
 
                         //TODO, should be fixed
+                        // loading animation file
+                        final Animator field_shake = AnimatorInflater.loadAnimator(getApplicationContext(), R.animator.empty_field_animation);
 
-                        if (TextUtils.isEmpty(event_name) || TextUtils.isEmpty(event_desc)) {
-                            Snackbar.make(v, "Sorry one or more fields are empty", Snackbar.LENGTH_LONG).show();
-                        } else {
+                        if (TextUtils.isEmpty(event_name)) {
+                            //Snackbar.make(v, "Sorry one or more fields are empty", Snackbar.LENGTH_LONG).show();
+                            // Error message added to the field and animation
+                            eventName.setError(getResources().getString(R.string.required_field));
+                            field_shake.setTarget(eventName);
+                            field_shake.start();
+
+                        }else if(TextUtils.isEmpty(event_desc)){
+                            // Error message added to the field and animation
+                            eventDesc.setError(getResources().getString(R.string.required_field));
+                            field_shake.setTarget(eventDesc);
+                            field_shake.start();
+                        }else
+                            {
                             //TODO, save the information in a database or file :-)
                             Note note = new Note();
                             note.setNote_name(event_name);
@@ -154,6 +186,29 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
+
+    private void logout() {
+        Toast.makeText(this, "Signing Out", Toast.LENGTH_LONG).show();
+        AuthUI.getInstance()
+                .signOut(this)
+        .addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()){
+                    navigateToSignIn();
+                } else {
+                    Snackbar.make(notesRecyclerView, "Error happended during sign out! Try again", Snackbar.LENGTH_LONG).show();
+                }
+            }
+        });
+
+    }
+
+    private void navigateToSignIn(){
+        Intent authIntent = new Intent(HomeActivity.this, AuthActivity.class);
+        startActivity(authIntent);
+        finish();
+    }
     private String createAt() {
         Date date = new Date();
         DateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
@@ -208,9 +263,21 @@ public class HomeActivity extends AppCompatActivity {
                         String event_desc = eventDesc.getText().toString();
 
                         //TODO, should be fixed
+                        // loading animation file
+                        final Animator field_shake = AnimatorInflater.loadAnimator(getApplicationContext(), R.animator.empty_field_animation);
 
-                        if (TextUtils.isEmpty(event_name) || TextUtils.isEmpty(event_desc)) {
-                            Snackbar.make(v, "Sorry one or more fields are empty", Snackbar.LENGTH_LONG).show();
+                        if (TextUtils.isEmpty(event_name)) {
+                            //Snackbar.make(v, "Sorry one or more fields are empty", Snackbar.LENGTH_LONG).show();
+                            // Error message added to the field and animation
+                            eventName.setError(getResources().getString(R.string.required_field));
+                            field_shake.setTarget(eventName);
+                            field_shake.start();
+
+                        }else if(TextUtils.isEmpty(event_desc)){
+                            // Error message added to the field and animation
+                            eventDesc.setError(getResources().getString(R.string.required_field));
+                            field_shake.setTarget(eventDesc);
+                            field_shake.start();
                         } else {
                             //TODO, save the information in a database or file :-)
                             Note note = new Note();
@@ -246,19 +313,67 @@ public class HomeActivity extends AppCompatActivity {
                 Snackbar.make(notesRecyclerView, "Sorting by Z - A...", Snackbar.LENGTH_LONG).show();
                 break;
             case R.id.action_about:
-                Snackbar.make(notesRecyclerView, "About", Snackbar.LENGTH_LONG).show();
+                Snackbar.make(notesRecyclerView, "About", Snackbar.LENGTH_SHORT).show();
+                Intent intent
+                         = new Intent(this, AboutActivity.class);
+                startActivity(intent);
                 break;
+            case R.id.logout:
+                logout();
+                return true;
             default:
                 break;
         }
         return super.onOptionsItemSelected(item);
     }
 
+
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);//***Change Here***
+            startActivity(intent);
+            finish();
+            System.exit(0);
+            return;
+        }
+        this.doubleBackToExitPressedOnce = true;
+        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, 2000);
+    }
+
+
     private void loadNotes() {
+
+
         NoteRepositoryImpl noteRepository =
                 ((DairyApplication) getApplicationContext()).getNoteRepository();
         Cursor cursor = noteRepository.loadAll();
         notesAdapter.changeCursor(cursor);
+        if (pendingIntroAnimation) {
+            pendingIntroAnimation = false;
+            startIntroAnimation();
+        }
+    }
+
+    private void startIntroAnimation() {
+        notesRecyclerView.setTranslationY(1000);
+        notesRecyclerView.setAlpha(0f);
+        notesRecyclerView.animate()
+                .translationY(0)
+                .setDuration(400)
+                .alpha(1f)
+                .setInterpolator(new AccelerateDecelerateInterpolator())
+                .start();
     }
 
 }
